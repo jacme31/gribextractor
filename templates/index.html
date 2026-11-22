@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Surveillance du programme GFS NOAA</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script>
+        $(document).ready(function() {
+            function majStatut() {
+                $.get("/statut", function(data) {
+                    $("#dernier_fichier").text(data.dernier_fichier);
+                    $("#dernier_echec").text(data.dernier_echec);
+                    $("#futur_fichier").text(data.futur_fichier);
+                    $("#status").text(data.status);
+                    var stats = data.statistiques;
+                    $("#statistiques_total").text(stats.total);
+                    $("#statistiques_traites").text(stats.traites);
+                    $("#statistiques_depuis").text(new Date(stats.depuis).toLocaleString());
+                    var liste = $("#statistiques_tentatives").empty();
+                    stats.tentatives.forEach(function(tentative) {
+                        $("<li>").text(
+                            "Tentative " + tentative.tentative + " : " +
+                            tentative.nombre + " (" + tentative.pourcentage.toFixed(1) + " %)"
+                        ).appendTo(liste);
+                    });
+                    $("<li>").text(
+                        "Abandonnés : " + stats.abandonnes.nombre +
+                        " (" + stats.abandonnes.pourcentage.toFixed(1) + " %)"
+                    ).appendTo(liste);
+                    if (data.boucle_active) {
+                        $("#statut_boucle").text("Active").css("color", "green");
+                        $("#demarrer").prop("disabled", true);
+                        $("#arreter").prop("disabled", false);
+                    } else {
+                        $("#statut_boucle").text("Inactive").css("color", "red");
+                        $("#demarrer").prop("disabled", data.en_arret);
+                        $("#arreter").prop("disabled", true);
+                    }
+                });
+            }
+            majStatut();
+            setInterval(majStatut, 5000);  // Rafraîchit toutes les 5 secondes
+
+            $("#demarrer").click(function() {
+                $.post("/demarrer", function() { 
+                    majStatut();
+                });
+            });
+
+            $("#arreter").click(function() {
+                $.post("/arreter", function() {
+                    majStatut();
+                });
+            });
+
+            $("#reinitialiser_echec").click(function() {
+                var button = $(this);
+                button.prop("disabled", true);
+                $("#erreur_reinitialisation").text("");
+                $.post("/reinitialiser-echec")
+                    .done(function() {
+                        majStatut();
+                    })
+                    .fail(function(xhr) {
+                        var message = xhr.responseJSON && xhr.responseJSON.erreur;
+                        $("#erreur_reinitialisation").text(
+                            message || "Impossible de réinitialiser l'échéance abandonnée."
+                        );
+                    })
+                    .always(function() {
+                        button.prop("disabled", false);
+                    });
+            });
+        });
+    </script>
+</head>
+<body>
+    <h1>Surveillance du programme GFS NOAA</h1>
+    <p>Statut de la boucle : <span id="statut_boucle">Inactive</span></p>
+    <p>Dernier fichier téléchargé : <span id="dernier_fichier">Aucun</span></p>
+    <p>Dernière échéance abandonnée : <span id="dernier_echec">Aucune</span></p>
+    <button id="reinitialiser_echec">Effacer la dernière échéance abandonnée</button>
+    <span id="erreur_reinitialisation" role="alert"></span>
+    <p>Prochain fichier téléchargé : <span id="futur_fichier">Aucun</span></p>
+    <p><span id="statistiques_traites">0</span> fichiers traités depuis
+        <span id="statistiques_depuis">le démarrage</span>, dont
+        <span id="statistiques_total">0</span> téléchargés et validés :</p>
+    <ul id="statistiques_tentatives"></ul>
+    <button id="demarrer">Démarrer la boucle</button>
+    <button id="arreter" disabled>Arrêter la boucle</button>
+    <p>Message: <span id="status">Initialisation </span></p>
+</body>
+</html>
