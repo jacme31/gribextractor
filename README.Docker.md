@@ -5,6 +5,13 @@ When you're ready, start your application by running:
 
 Your application will be available at http://localhost:5959.
 
+### Interface language
+
+Set `UI_LANGUAGE=fr` (default) or `UI_LANGUAGE=en` in `compose.yaml` and
+recreate the container. This controls the supervision page and its status
+messages; application logs are always in English. Existing checkpoints are
+preserved when changing languages. Unsupported values prevent startup.
+
 ### Download progress and recovery
 
 - When Herbie's 120-second availability check times out, the same forecast
@@ -59,10 +66,10 @@ they contain.
 The application registers a `SIGUSR1` handler at startup. It writes the Python
 stacks of all threads to the container's standard error without stopping them.
 In an SSH session on the Docker host, first confirm that the startup log says
-`Diagnostic des threads activé : signal SIGUSR1`:
+`Thread diagnostics enabled: SIGUSR1`:
 
 ```sh
-docker logs gribextractor 2>&1 | grep 'Diagnostic des threads activé'
+docker logs gribextractor 2>&1 | grep 'Thread diagnostics enabled: SIGUSR1'
 ```
 
 Only after verifying that the running container has this handler, capture the

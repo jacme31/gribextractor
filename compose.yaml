@@ -12,7 +12,7 @@ services:
     container_name: gribextractor
     build:
       context: .
-    image: gribextractor:V1.2
+    image: gribextractor:pr554
     ports:
       - 5959:5959
     volumes:
@@ -22,6 +22,7 @@ services:
       - GRIBSUBSET=:[UV]GRD:10 m above|GUST
       # - GRIB_MIN_MESSAGES=3
       - PRIORITY=aws,google,azure
+      - UI_LANGUAGE=fr
       - LOGLEVEL=DEBUG
 
 # The commented out section below is an example of how to define a PostgreSQL

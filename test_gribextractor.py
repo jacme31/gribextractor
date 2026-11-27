@@ -64,6 +64,62 @@ class GribExtractorTests(unittest.TestCase):
         with mock.patch.object(module, "config_write", side_effect=write_and_stop):
             module.boucle_grib()
 
+    def test_status_and_existing_failure_are_localized(self):
+        module.GRIBD.dernier_echec = "Daterun=2026/11/15 numéro de run=12Z TM=+9"
+        module.config_write(self.run, 0, 0)
+        module.GRIBD.dernier_echec = ""
+        module.config_read()
+        with mock.patch.object(module, "UI_LANGUAGE", "en"):
+            status = module.statut()
+            self.assertEqual(status["dernier_echec"], "Daterun=2026/11/15 run=12Z TM=+9")
+            self.assertEqual(status["dernier_fichier"], "No files downloaded")
+            self.assertEqual(status["status"], "GRIB downloads stopped")
+            self.assertEqual(module.reinitialiser_echec()["dernier_echec"],
+                             "No abandoned forecast hours")
+        with mock.patch.object(module, "UI_LANGUAGE", "fr"):
+            self.assertEqual(module.statut()["dernier_echec"], "Aucune échéance abandonnée")
+
+    def test_reset_failure_error_is_localized_and_logs_in_english(self):
+        with mock.patch.object(module, "UI_LANGUAGE", "en"), \
+                self.assertLogs(module.logger, level="ERROR") as logs:
+            response, status = module.reinitialiser_echec()
+        self.assertEqual(status, 500)
+        self.assertIn("Could not save", response["erreur"])
+        self.assertIn("Could not clear the last abandoned forecast hour", logs.output[0])
+
+    def test_language_environment_and_template_context(self):
+        with mock.patch.dict(os.environ, {"UI_LANGUAGE": "en"}), \
+                mock.patch.object(module, "UI_LANGUAGE", "en"), \
+                mock.patch.object(module, "render_template") as render:
+            module.index()
+        self.assertEqual(render.call_args.kwargs["language"], "en")
+        self.assertEqual(render.call_args.kwargs["text"]["start"], "Start downloads")
+
+    def test_both_languages_render_supervision_page(self):
+        from jinja2 import Environment, FileSystemLoader, select_autoescape
+
+        env = Environment(loader=FileSystemLoader(str(Path(__file__).parent / "templates")),
+                          autoescape=select_autoescape(["html"]))
+        template = env.get_template("index.html")
+        for language, title, button in (
+                ("en", "NOAA GFS monitor", "Start downloads"),
+                ("fr", "Surveillance du programme GFS NOAA", "Démarrer la boucle")):
+            with self.subTest(language=language):
+                rendered = template.render(text=module.TEXT[language], language=language)
+                self.assertIn(f'<html lang="{language}">', rendered)
+                self.assertIn(f"<h1>{title}</h1>", rendered)
+                self.assertIn(f">{button}</button>", rendered)
+                self.assertIn('var text = {', rendered)
+
+    def test_invalid_language_fails_at_startup(self):
+        spec = importlib.util.spec_from_file_location(
+            "gribextractor_language_tested", Path(__file__).with_name("gribextractor.py"))
+        loaded = importlib.util.module_from_spec(spec)
+        with mock.patch.dict(os.environ, {"UI_LANGUAGE": "de"}), \
+                mock.patch.dict(sys.modules, {"flask": flask, "herbie": herbie, "pygrib": pygrib}):
+            with self.assertRaisesRegex(ValueError, "UI_LANGUAGE"):
+                spec.loader.exec_module(loaded)
+
     def test_minimum_messages_environment(self):
         for value, expected in ((None, 1), ("3", 3), ("0", None),
                                 ("-1", None), ("", None), ("abc", None)):

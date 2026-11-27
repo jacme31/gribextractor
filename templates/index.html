@@ -1,10 +1,12 @@
 <!DOCTYPE html>
-<html>
+<html lang="{{ language }}">
 <head>
-    <title>Surveillance du programme GFS NOAA</title>
+    <meta charset="utf-8">
+    <title>{{ text.title }}</title>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script>
         $(document).ready(function() {
+            var text = {{ text | tojson }};
             function majStatut() {
                 $.get("/statut", function(data) {
                     $("#dernier_fichier").text(data.dernier_fichier);
@@ -14,24 +16,24 @@
                     var stats = data.statistiques;
                     $("#statistiques_total").text(stats.total);
                     $("#statistiques_traites").text(stats.traites);
-                    $("#statistiques_depuis").text(new Date(stats.depuis).toLocaleString());
+                    $("#statistiques_depuis").text(new Date(stats.depuis).toLocaleString({{ language | tojson }}));
                     var liste = $("#statistiques_tentatives").empty();
                     stats.tentatives.forEach(function(tentative) {
                         $("<li>").text(
-                            "Tentative " + tentative.tentative + " : " +
+                            text.attempt + " " + tentative.tentative + " : " +
                             tentative.nombre + " (" + tentative.pourcentage.toFixed(1) + " %)"
                         ).appendTo(liste);
                     });
                     $("<li>").text(
-                        "Abandonnés : " + stats.abandonnes.nombre +
+                        text.abandoned + " : " + stats.abandonnes.nombre +
                         " (" + stats.abandonnes.pourcentage.toFixed(1) + " %)"
                     ).appendTo(liste);
                     if (data.boucle_active) {
-                        $("#statut_boucle").text("Active").css("color", "green");
+                        $("#statut_boucle").text(text.active).css("color", "green");
                         $("#demarrer").prop("disabled", true);
                         $("#arreter").prop("disabled", false);
                     } else {
-                        $("#statut_boucle").text("Inactive").css("color", "red");
+                        $("#statut_boucle").text(text.inactive).css("color", "red");
                         $("#demarrer").prop("disabled", data.en_arret);
                         $("#arreter").prop("disabled", true);
                     }
@@ -63,7 +65,7 @@
                     .fail(function(xhr) {
                         var message = xhr.responseJSON && xhr.responseJSON.erreur;
                         $("#erreur_reinitialisation").text(
-                            message || "Impossible de réinitialiser l'échéance abandonnée."
+                            message || text.reset_error
                         );
                     })
                     .always(function() {
@@ -74,19 +76,19 @@
     </script>
 </head>
 <body>
-    <h1>Surveillance du programme GFS NOAA</h1>
-    <p>Statut de la boucle : <span id="statut_boucle">Inactive</span></p>
-    <p>Dernier fichier téléchargé : <span id="dernier_fichier">Aucun</span></p>
-    <p>Dernière échéance abandonnée : <span id="dernier_echec">Aucune</span></p>
-    <button id="reinitialiser_echec">Effacer la dernière échéance abandonnée</button>
+    <h1>{{ text.title }}</h1>
+    <p>{{ text.loop }} : <span id="statut_boucle">{{ text.inactive }}</span></p>
+    <p>{{ text.last_file }} : <span id="dernier_fichier">{{ text.no_file }}</span></p>
+    <p>{{ text.last_failure }} : <span id="dernier_echec">{{ text.no_failure }}</span></p>
+    <button id="reinitialiser_echec">{{ text.clear_failure }}</button>
     <span id="erreur_reinitialisation" role="alert"></span>
-    <p>Prochain fichier téléchargé : <span id="futur_fichier">Aucun</span></p>
-    <p><span id="statistiques_traites">0</span> fichiers traités depuis
-        <span id="statistiques_depuis">le démarrage</span>, dont
-        <span id="statistiques_total">0</span> téléchargés et validés :</p>
+    <p>{{ text.next_file }} : <span id="futur_fichier">{{ text.unknown }}</span></p>
+    <p><span id="statistiques_traites">0</span> {{ text.processed }}
+        <span id="statistiques_depuis">{{ text.startup }}</span>, {{ text.including }}
+        <span id="statistiques_total">0</span> {{ text.validated }} :</p>
     <ul id="statistiques_tentatives"></ul>
-    <button id="demarrer">Démarrer la boucle</button>
-    <button id="arreter" disabled>Arrêter la boucle</button>
-    <p>Message: <span id="status">Initialisation </span></p>
+    <button id="demarrer">{{ text.start }}</button>
+    <button id="arreter" disabled>{{ text.stop }}</button>
+    <p>{{ text.message }}: <span id="status">{{ text.initializing }}</span></p>
 </body>
 </html>
