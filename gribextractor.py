@@ -3,7 +3,7 @@
 """
 Created on Sat Dec  7 22:01:27 2024
 
-@author: arquey
+@author: jacme31
 """
 #from herbie import Herbie
 from herbie import HerbieWait
@@ -269,11 +269,11 @@ def boucle_grib():
                     continue
                 if GRIBD.stop_event.is_set():
                     return
-                #if herbie.idx is None and herbie.grib_source != "local":
-                #    logger.info("Index pas encore disponible pour %s ; nouvelle vérification dans %s secondes",
-                #                description, DELAI_NOUVEL_ESSAI)
-                #    if GRIBD.stop_event.wait(DELAI_NOUVEL_ESSAI):
-                #       return
+                if herbie.idx is None and herbie.grib_source != "local":
+                    logger.info("Index pas encore disponible pour %s ; nouvelle vérification dans %s secondes",
+                                description, DELAI_NOUVEL_ESSAI)
+                    if GRIBD.stop_event.wait(DELAI_NOUVEL_ESSAI):
+                       return
                     continue
                 fichier = herbie.download(GRIBD.subsetstring, verbose=verbose_flag,
                                           errors='raise')
