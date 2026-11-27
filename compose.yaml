@@ -20,6 +20,7 @@ services:
     environment:
       - GRIBSTEP=3
       - GRIBSUBSET=:[UV]GRD:10 m above|GUST
+      # - GRIB_MIN_MESSAGES=3
       - PRIORITY=aws,google,azure
       - LOGLEVEL=DEBUG
 

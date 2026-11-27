@@ -147,11 +147,7 @@ def make_allgrib (savedir,date,lastrun,lastfxx):
 
 
 def chkgribfile (file):
-    """Check GRIB file validity.
-    A valid file must exist, not be void, contain at least one grib message,
-    and include required parameters: u10, v10, and gust.
-    :param file:  path to check
-    """
+    """Check that the file exists and contains the minimum number of GRIB messages."""
     logging.info(f"file to check: {file}")
     if not (file and os.path.exists(file) and os.path.getsize(file) > 0):
         logging.error(f"invalid file {file}: file does not exist or is empty")
@@ -159,46 +155,19 @@ def chkgribfile (file):
     
     try:
         grbs = pygrib.open(file)
-        n_values = int(grbs.messages)
-        logging.info(f"{n_values} grib messages found")
-        
-        if n_values < 1:
-            logging.error(f"invalid file {file}: file has no grib messages")
+        try:
+            n_values = int(grbs.messages)
+        finally:
             grbs.close()
-            return False
-        
-        # Check for required parameters by shortName
-        required_shortnames = {'10u', '10v', 'gust'}
-        found_shortnames = set()
-        
-        for grb in grbs:
-            try:
-                shortname = grb['shortName']
-                name=grb['name']
-                Unite=grb['units']
-                Niveau=grb['level']
+        logging.info(f"{n_values} grib messages found")
 
-                logging.info(f"shortname found : {shortname} - name: {name} - unit: {Unite} - level: {Niveau}")
-                if shortname in required_shortnames:
-                    found_shortnames.add(shortname)
-                    logging.debug(f"Found required parameter: {shortname}")
-            except Exception as e:
-                logging.debug(f"Could not read shortName: {e}")
-                continue
-            
-            # Early exit if all parameters found
-            if found_shortnames == required_shortnames:
-                break
-        
-        grbs.close()
-        
-        # Validate all required parameters are present
-        missing_shortnames = required_shortnames - found_shortnames
-        if missing_shortnames:
-            logging.error(f"invalid file {file}: missing required parameters: {missing_shortnames}")
+        if n_values < GRIB_MIN_MESSAGES:
+            logging.error(
+                "invalid file %s: found %s GRIB messages, at least %s required",
+                file, n_values, GRIB_MIN_MESSAGES)
             return False
-        
-        logging.info(f"✓ File {file} is valid (contains 10u, 10v, gust)")
+
+        logging.info("File %s is valid (%s GRIB messages)", file, n_values)
         return True
         
     except Exception as e:
@@ -361,11 +330,18 @@ def parse_priority(value):
 
 gribstep = int(os.getenv('GRIBSTEP', '1'))
 gribsubset = os.getenv('GRIBSUBSET', ":[UV]GRD:10 m above|GUST")
+try:
+    GRIB_MIN_MESSAGES = int(os.getenv('GRIB_MIN_MESSAGES', '1'))
+except ValueError as exc:
+    raise ValueError("GRIB_MIN_MESSAGES must be a positive integer") from exc
+if GRIB_MIN_MESSAGES < 1:
+    raise ValueError("GRIB_MIN_MESSAGES must be a positive integer")
 PRIORITY = parse_priority(os.getenv('PRIORITY', 'aws,google,azure'))
 if gribstep <= 0:
     raise ValueError("GRIBSTEP doit être un entier strictement positif")
 
-logger.info(f"Configuration: GRIBSTEP={gribstep}, GRIBSUBSET={gribsubset}, PRIORITY={PRIORITY}")
+logger.info("Configuration: GRIBSTEP=%s, GRIBSUBSET=%s, GRIB_MIN_MESSAGES=%s, PRIORITY=%s",
+            gribstep, gribsubset, GRIB_MIN_MESSAGES, PRIORITY)
 
 GRIBD=gribd(step=gribstep, subsetstring=gribsubset)
 

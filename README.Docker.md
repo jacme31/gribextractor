@@ -45,6 +45,15 @@ Empty entries and unknown names prevent startup. Accepted GFS sources are
 `aws`, `google`, `azure`, `nomads` and `ncar_rda`; the latter does not
 provide an index for partial downloads.
 
+### GRIB validation
+
+Set `GRIB_MIN_MESSAGES` in `compose.yaml` to require a minimum number of
+messages in each downloaded GRIB file. The default is `1`; invalid or
+non-positive values prevent startup. For example, use `GRIB_MIN_MESSAGES=3`
+when the configured subset is expected to contain at least three messages.
+This counts messages, not distinct fields, and does not check which parameters
+they contain.
+
 ### Diagnosing a blocked worker on Linux
 
 The application registers a `SIGUSR1` handler at startup. It writes the Python

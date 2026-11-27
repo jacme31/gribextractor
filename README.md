@@ -66,6 +66,9 @@ Set these in `compose.yaml` (Docker) or pass them when running locally:
 - `PRIORITY`: Comma-separated list of GFS sources (default: `aws,google,azure`)
   - Valid sources: `aws`, `google`, `azure`, `nomads`, `ncar_rda`
 - `UI_LANGUAGE`: Interface language (`fr` for French, `en` for English; default: `fr`)
+- `GRIB_MIN_MESSAGES`: Minimum number of GRIB messages required in a downloaded
+  file (positive integer; default: `1`). This counts messages, not distinct
+  fields, and does not verify that specific parameters are present.
 
 ## Features
 

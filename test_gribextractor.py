@@ -64,6 +64,47 @@ class GribExtractorTests(unittest.TestCase):
         with mock.patch.object(module, "config_write", side_effect=write_and_stop):
             module.boucle_grib()
 
+    def test_minimum_messages_environment(self):
+        for value, expected in ((None, 1), ("3", 3), ("0", None),
+                                ("-1", None), ("", None), ("abc", None)):
+            with self.subTest(value=value):
+                spec = importlib.util.spec_from_file_location(
+                    "gribextractor_min_messages_tested", Path(__file__).with_name("gribextractor.py"))
+                loaded = importlib.util.module_from_spec(spec)
+                environment = {"UI_LANGUAGE": "fr", "GRIB_MIN_MESSAGES": value}
+                if value is None:
+                    environment.pop("GRIB_MIN_MESSAGES")
+                with mock.patch.dict(os.environ, environment, clear=True), \
+                        mock.patch.dict(sys.modules, {"flask": flask, "herbie": herbie, "pygrib": pygrib}):
+                    if expected is None:
+                        with self.assertRaisesRegex(ValueError, "GRIB_MIN_MESSAGES"):
+                            spec.loader.exec_module(loaded)
+                    else:
+                        spec.loader.exec_module(loaded)
+                        self.assertEqual(loaded.GRIB_MIN_MESSAGES, expected)
+
+    def test_grib_file_message_count(self):
+        path = Path(self.tempdir.name) / "download.grib"
+        with mock.patch.object(module.pygrib, "open", create=True) as open_grib:
+            self.assertFalse(module.chkgribfile(path))
+            path.touch()
+            self.assertFalse(module.chkgribfile(path))
+            open_grib.assert_not_called()
+            path.write_bytes(b"GRIB")
+
+            for minimum, count, valid in ((1, 0, False), (1, 1, True),
+                                           (3, 2, False), (3, 3, True),
+                                           (3, 4, True)):
+                with self.subTest(minimum=minimum, count=count):
+                    gribs = mock.Mock(messages=count)
+                    open_grib.return_value = gribs
+                    with mock.patch.object(module, "GRIB_MIN_MESSAGES", minimum):
+                        self.assertEqual(module.chkgribfile(path), valid)
+                    gribs.close.assert_called_once()
+
+            open_grib.side_effect = OSError("unreadable GRIB")
+            self.assertFalse(module.chkgribfile(path))
+
     def test_statistics_count_success_by_attempt_and_abandons(self):
         self.write_legacy(0)
         download = mock.Mock()
